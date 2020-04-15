@@ -10,6 +10,7 @@ class CmdLineApp(cmd2.Cmd):
     def __init__(self):
         super().__init__()
         self.rename_command('speed_up', 'speed-up')
+        self.rename_command('run_pyscript', 'run-pyscript')
 
     def do_speed_up(self, args):
         self.poutput("going faster")
