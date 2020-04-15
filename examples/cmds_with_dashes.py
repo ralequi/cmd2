@@ -18,6 +18,7 @@ class CmdLineApp(cmd2.Cmd):
         self.poutput("help for going faster")
 
     def do_debug(self, args):
+        """some dochelp on the debug command"""
         import ipdb; ipdb.set_trace()
 
 
