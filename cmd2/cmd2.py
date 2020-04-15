@@ -335,6 +335,8 @@ class Cmd(cmd.Cmd):
 
         # create a map from user entered command names to the methods implementing those commands
         self._command_methods = dict()
+        self._help_methods = dict()
+        self._completer_methods = dict()
 
         # Commands that have been disabled from use. This is to support commands that are only available
         # during specific states of the application. This dictionary's keys are the command names and its
@@ -2067,21 +2069,19 @@ class Cmd(cmd.Cmd):
         You could use this method to make the built-in command run_pyscript
         available to a user as run-pyscript.
         """
-        # see if the oldname is in our map
-        if oldname in self._command_methods:
-            # it is, so get the method from the map
-            method = self._command_methods[oldname]
-        else:
-            # the old name isn't in our map, find the method
-            # cmd_func will check the _command_methods first, but
-            # should fall through and find the command method by
-            # looking for the "do_command" method on the cmd2 instance
-            method = self.cmd_func(oldname)
+        self._command_methods = self._remap(self._command_methods, self.cmd_func, oldname, newname)
+
+    def _remap(self, mapp: Dict, func: Callable, oldname: str, newname: str) -> Dict:
+        """
+        """
+        method = func(oldname)
         # add the new command to the map
-        self._command_methods[newname] = method
+        mapp[newname] = method
         # add the old command pointing to no method to the map
         # signifying that it isn't a valid command
-        self._command_methods[oldname] = None
+        mapp[oldname] = None
+        return mapp
+
 
     # noinspection PyMethodOverriding
     def onecmd(self, statement: Union[Statement, str], *, add_to_history: bool = True) -> bool:
