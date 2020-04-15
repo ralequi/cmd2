@@ -1,0 +1,6 @@
+# Todo List
+
+Things to be done to implement the changes described in
+[issue 907](https://github.com/python-cmd2/cmd2/issues/907)
+
+- [ ] fix get_help_topics() so it looks in self._help_methods

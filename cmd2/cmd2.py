@@ -2042,9 +2042,9 @@ class Cmd(cmd.Cmd):
 
         :Example:
 
-        >>> helpfunc = self.cmd_func('help')
+        >>> set_func = self.cmd_func('set')
 
-        helpfunc now contains a reference to the ``do_help`` method
+        set_func now contains a reference to the ``do_set`` method
         """
         if command in self._command_methods:
             func = self._command_methods[command]
@@ -2065,6 +2065,40 @@ class Cmd(cmd.Cmd):
         target = constants.COMMAND_FUNC_PREFIX + command
         return target if callable(getattr(self, target, None)) else ''
 
+    def help_func(self, command: str) -> Optional[Callable]:
+        """
+        Get the help function for a command, if it exists
+
+        :param command: the name of the command
+
+        :Example:
+
+        >>> set_help_func = self.help_func('set')
+
+        set_help_func now contains a reference to the ``help_set`` method
+        """
+        if command in self._help_methods:
+            func = self._help_methods[command]
+        else:
+            func_name = self._help_func_name(command)
+            if func_name:
+                func = getattr(self, func_name)
+            else:
+                func = None
+        return func
+
+    def _help_func_name(self, command: str) -> str:
+        """Get the method name of the help method associated with the given command.
+
+        :param command: name of the command you want the help function for
+        :return: method name of the help function, or '' if there is no function defined
+
+        Help for a command could also be found in __doc__ of the command. This
+        function only looks for the help method
+        """
+        target = constants.HELP_FUNC_PREFIX + command
+        return target if callable(getattr(self, target, None)) else ''
+
     def rename_command(self, oldname: str, newname: str):
         """Rename one of the built-in user commands.
 
@@ -2072,6 +2106,7 @@ class Cmd(cmd.Cmd):
         available to a user as run-pyscript.
         """
         self._command_methods = self._remap(self._command_methods, self.cmd_func, oldname, newname)
+        self._help_methods = self._remap(self._help_methods, self.help_func, oldname, newname)
 
     def _remap(self, mapp: Dict, func: Callable, oldname: str, newname: str) -> Dict:
         """
@@ -2702,7 +2737,7 @@ class Cmd(cmd.Cmd):
         else:
             # Getting help for a specific command
             func = self.cmd_func(args.command)
-            help_func = getattr(self, constants.HELP_FUNC_PREFIX + args.command, None)
+            help_func = self.help_func(args.command)
             argparser = getattr(func, constants.CMD_ATTR_ARGPARSER, None)
 
             # If the command function uses argparse, then use argparse's help
@@ -2713,6 +2748,10 @@ class Cmd(cmd.Cmd):
 
                 # Set end to blank so the help output matches how it looks when "command -h" is used
                 self.poutput(completer.format_help(tokens), end='')
+
+            # call the help function if we have one
+            elif help_func:
+                help_func()
 
             # If there is no help information then print an error
             elif help_func is None and (func is None or not func.__doc__):
@@ -2804,7 +2843,7 @@ class Cmd(cmd.Cmd):
 
                     # Non-argparse commands can have help_functions for their documentation
                     if not hasattr(cmd_func, constants.CMD_ATTR_ARGPARSER) and command in topics:
-                        help_func = getattr(self, constants.HELP_FUNC_PREFIX + command)
+                        help_func = self.help_func(command)
                         result = io.StringIO()
 
                         # try to redirect system stdout
@@ -4025,7 +4064,7 @@ class Cmd(cmd.Cmd):
         if command not in self.disabled_commands:
             return
 
-        help_func_name = constants.HELP_FUNC_PREFIX + command
+        help_func_name = self._help_func_name(command)
         completer_func_name = constants.COMPLETER_FUNC_PREFIX + command
 
         # Restore the command function to its original value
@@ -4078,7 +4117,7 @@ class Cmd(cmd.Cmd):
         if command_function is None:
             raise AttributeError("{} does not refer to a command".format(command))
 
-        help_func_name = constants.HELP_FUNC_PREFIX + command
+        help_func_name = self._help_func_name(command)
         completer_func_name = constants.COMPLETER_FUNC_PREFIX + command
 
         # Add the disabled command record
