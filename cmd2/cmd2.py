@@ -2052,6 +2052,8 @@ class Cmd(cmd.Cmd):
             func_name = self._cmd_func_name(command)
             if func_name:
                 func = getattr(self, func_name)
+            else:
+                func = None
         return func
 
     def _cmd_func_name(self, command: str) -> str:
