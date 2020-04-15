@@ -333,6 +333,9 @@ class Cmd(cmd.Cmd):
         # being printed by a command.
         self.terminal_lock = threading.RLock()
 
+        # create a map from user entered command names to the methods implementing those commands
+        self._command_methods = dict()
+
         # Commands that have been disabled from use. This is to support commands that are only available
         # during specific states of the application. This dictionary's keys are the command names and its
         # values are DisabledCommand objects.
@@ -2041,9 +2044,13 @@ class Cmd(cmd.Cmd):
 
         helpfunc now contains a reference to the ``do_help`` method
         """
-        func_name = self._cmd_func_name(command)
-        if func_name:
-            return getattr(self, func_name)
+        if command in self._command_methods:
+            func = self._command_methods[command]
+        else:
+            func_name = self._cmd_func_name(command)
+            if func_name:
+                func = getattr(self, func_name)
+        return func
 
     def _cmd_func_name(self, command: str) -> str:
         """Get the method name associated with a given command.
@@ -2053,6 +2060,28 @@ class Cmd(cmd.Cmd):
         """
         target = constants.COMMAND_FUNC_PREFIX + command
         return target if callable(getattr(self, target, None)) else ''
+
+    def rename_command(self, oldname: str, newname: str):
+        """Rename one of the built-in user commands.
+
+        You could use this method to make the built-in command run_pyscript
+        available to a user as run-pyscript.
+        """
+        # see if the oldname is in our map
+        if oldname in self._command_methods:
+            # it is, so get the method from the map
+            method = self._command_methods[oldname]
+        else:
+            # the old name isn't in our map, find the method
+            # cmd_func will check the _command_methods first, but
+            # should fall through and find the command method by
+            # looking for the "do_command" method on the cmd2 instance
+            method = self.cmd_func(oldname)
+        # add the new command to the map
+        self._command_methods[newname] = method
+        # add the old command pointing to no method to the map
+        # signifying that it isn't a valid command
+        self._command_methods[oldname] = None
 
     # noinspection PyMethodOverriding
     def onecmd(self, statement: Union[Statement, str], *, add_to_history: bool = True) -> bool:
