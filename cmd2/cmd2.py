@@ -2051,7 +2051,7 @@ class Cmd(cmd.Cmd):
         else:
             func_name = self._cmd_func_name(command)
             if func_name:
-                func = getattr(self, func_name)
+                func = getattr(self, func_name, None)
             else:
                 func = None
         return func
@@ -2065,7 +2065,7 @@ class Cmd(cmd.Cmd):
         target = constants.COMMAND_FUNC_PREFIX + command
         return target if callable(getattr(self, target, None)) else ''
 
-    def help_func(self, command: str) -> Optional[Callable]:
+    def get_help_func(self, command: str) -> Optional[Callable]:
         """
         Get the help function for a command, if it exists
 
@@ -2073,7 +2073,7 @@ class Cmd(cmd.Cmd):
 
         :Example:
 
-        >>> set_help_func = self.help_func('set')
+        >>> set_help_func = self.get_help_func('set')
 
         set_help_func now contains a reference to the ``help_set`` method
         """
@@ -2082,7 +2082,7 @@ class Cmd(cmd.Cmd):
         else:
             func_name = self._help_func_name(command)
             if func_name:
-                func = getattr(self, func_name)
+                func = getattr(self, func_name, None)
             else:
                 func = None
         return func
@@ -2106,7 +2106,7 @@ class Cmd(cmd.Cmd):
         available to a user as run-pyscript.
         """
         self._command_methods = self._remap(self._command_methods, self.cmd_func, oldname, newname)
-        self._help_methods = self._remap(self._help_methods, self.help_func, oldname, newname)
+        self._help_methods = self._remap(self._help_methods, self.get_help_func, oldname, newname)
 
     def _remap(self, mapp: Dict, func: Callable, oldname: str, newname: str) -> Dict:
         """
@@ -2737,7 +2737,7 @@ class Cmd(cmd.Cmd):
         else:
             # Getting help for a specific command
             func = self.cmd_func(args.command)
-            help_func = self.help_func(args.command)
+            help_func = self.get_help_func(args.command)
             argparser = getattr(func, constants.CMD_ATTR_ARGPARSER, None)
 
             # If the command function uses argparse, then use argparse's help
@@ -2843,7 +2843,7 @@ class Cmd(cmd.Cmd):
 
                     # Non-argparse commands can have help_functions for their documentation
                     if not hasattr(cmd_func, constants.CMD_ATTR_ARGPARSER) and command in topics:
-                        help_func = self.help_func(command)
+                        help_func = self.get_help_func(command)
                         result = io.StringIO()
 
                         # try to redirect system stdout
