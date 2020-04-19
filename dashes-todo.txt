@@ -5,3 +5,26 @@ Things to be done to implement the changes described in
 
 - [ ] fix get_help_topics() so it looks in self._help_methods
 - [ ] fix enabling and disabling commands and categories
+- [ ] make get_all_commands() look at the _command_methods dict
+- [ ] make get_help_topics() look at _help_methods dict
+- [x] add documentation showing how to make help that isn't associated
+      with a command
+
+
+## Design principles
+
+The unique thing that identifies a command is not the function, it's the name.
+By default the name of the function defines the name of the command.
+
+Renaming a command is therefore changing the primary identifier of that
+command. When you do so, you are messing with everything else that uses that
+primary identifier for the command, like hidden and disabled commands.
+
+
+
+
+
+## Documentation Updates
+
+- self.hidden_commands
+- self.disabled_commands

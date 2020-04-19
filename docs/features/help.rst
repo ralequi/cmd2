@@ -6,6 +6,7 @@ quality or useful that documentation might be.  So it is important that you
 provide good built-in help within your application.  Fortunately, ``cmd2``
 makes this easy.
 
+
 Getting Help
 ------------
 
@@ -35,6 +36,7 @@ command:
     optional arguments:
       -h, --help  show this help message and exit
 
+
 Providing Help
 --------------
 
@@ -55,6 +57,12 @@ match the ``do_foo`` method, then that method will be used to provide the help
 for command **foo**.  This dynamic help is only supported for commands which
 do not use an ``argparse`` decorator because didn't want different output for
 ``help cmd`` than for ``cmd -h``.
+
+You can also create help topics that are not associated with any command.
+Simply create a method called ``help_mytopic`` which displays the appropriate
+information. ``cmd2`` will find this topic and show it in it's own section when
+the user runs the built-in ``help`` command.
+
 
 Categorizing Commands
 ---------------------
