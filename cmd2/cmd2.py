@@ -1487,7 +1487,7 @@ class Cmd(cmd.Cmd):
                 # decorated (it has), then what we see in self._command_methods[command]
                 # is just a bound method, not a name
 
-                names.remove(self._command_methods[command].__name__)
+                names.remove(self._command_methods[command])
             except ValueError:
                 pass
 
@@ -1527,43 +1527,17 @@ class Cmd(cmd.Cmd):
         return list(visible_commands | alias_names | macro_names)
 
     def get_help_topics(self) -> List[str]:
-        """Return a list of help topics"""
-        #
-        # This method is somewhat inefficient, it makes several passes
-        # through the names. While this could be done in a single loop,
-        # it would be many nested if's, and I think it's clearer what's
-        # happening with these multiple loops.
+        """Return all available help topics
 
-        all_names = self.get_names()
+        Commands can have help messages defined in several ways:
+        - by the argparser
+        - by a help_{command_name} function
+        - in the _help_methods() map
 
-        # start by looking for commands in _help_methods, if it's there then
-        # someone explicity said the key to _help_methods was a help topic
-        help_topics = []
-        for topic in self._help_methods:
-            # add the topic to our list of help topics
-            help_topics.append(topic)
-            # and remove the associated method from the list of all_names.
-            # we don't want it to be a candidate to be added later
-            try:
-                all_names.remove(self._help_methods[topic])
-            except ValueError:
-                pass
-
-        # loop through the other method names, looking for and adding
-        # additional help topics
-        for name in self.get_names():
-            if name.startswith(constants.HELP_FUNC_PREFIX):
-                if callable(getattr(self, name)):
-                    help_topics.append(name[len(constants.HELP_FUNC_PREFIX):])
-
-        # finally, filter out hidden and disabled commands
-        active_topics = []
-        for topic in help_topics:
-            if topic not in self.hidden_commands:
-                if topic not in self.disabled_commands:
-                    active_topics.append(topic)
-
-        return active_topics
+        Help topics could be associated with a command, or they can be created
+        stand-alone by creating a help_topic() function.
+        """
+        return []
 
 
     # noinspection PyUnusedLocal
@@ -2094,23 +2068,23 @@ class Cmd(cmd.Cmd):
 
         set_func now contains a reference to the ``do_set`` method
         """
-        if command in self._command_methods:
-            func = self._command_methods[command]
-        else:
-            func_name = self._cmd_func_name(command)
-            if func_name:
-                func = getattr(self, func_name, None)
-            else:
-                func = None
-        return func
+        func_name = self._cmd_func_name(command)
+        if func_name:
+            return getattr(self, func_name)
 
     def _cmd_func_name(self, command: str) -> str:
         """Get the method name associated with a given command.
 
         :param command: command to look up method name which implements it
-        :return: method name which implements the given command
+        :return: method name which implements the given command, or an empty
+                 string if no method for that command can be found
         """
-        target = constants.COMMAND_FUNC_PREFIX + command
+        # check if the command is in our renamed command map
+        if command in self._command_methods:
+            target = self._command_methods[command]
+        else:
+            target = constants.COMMAND_FUNC_PREFIX + command
+        # make sure it's callable
         return target if callable(getattr(self, target, None)) else ''
 
     def get_help_func(self, command: str) -> Optional[Callable]:
@@ -2125,15 +2099,9 @@ class Cmd(cmd.Cmd):
 
         set_help_func now contains a reference to the ``help_set`` method
         """
-        if command in self._help_methods:
-            func = self._help_methods[command]
-        else:
-            func_name = self._help_func_name(command)
-            if func_name:
-                func = getattr(self, func_name, None)
-            else:
-                func = None
-        return func
+        func_name = self._help_func_name(command)
+        if func_name:
+            return getattr(self, func_name)
 
     def _help_func_name(self, command: str) -> str:
         """Get the method name of the help method associated with the given command.
@@ -2144,7 +2112,12 @@ class Cmd(cmd.Cmd):
         Help for a command could also be found in __doc__ of the command. This
         function only looks for the help method
         """
-        target = constants.HELP_FUNC_PREFIX + command
+        # check if the method is in our renamed help methods map
+        if command in self._help_methods:
+            target = self._help_methods[command]
+        else:
+            target = constants.HELP_FUNC_PREFIX + command
+        # make sure it's callable
         return target if callable(getattr(self, target, None)) else ''
 
     def rename_command(self, oldname: str, newname: str):
@@ -2153,18 +2126,39 @@ class Cmd(cmd.Cmd):
         You could use this method to make the built-in command run_pyscript
         available to a user as run-pyscript.
         """
-        self._command_methods = self._remap(self._command_methods, oldname, newname)
-        self._help_methods = self._remap(self._help_methods, oldname, newname)
+        # this method works closely in concert with _cmd_func_name(),
+        # _help_func_name(), and _completer_func_name(). If you modify
+        # this method, you'll probably have to modify those methods too
 
-    def _remap(self, mapp: Dict, oldname: str, newname: str) -> Dict:
-        """
-        """
-        # add the new command to the map
-        mapp[newname] = oldname
-        # add the old command pointing to no method to the map
-        # signifying that it isn't a valid command
-        mapp[oldname] = None
-        return mapp
+        # update the _command_methods map
+        if oldname in self._command_methods:
+            # the old command was already in the map, save the old function name
+            target_func_name = self._command_methods[oldname]
+            # and add that function in the map under the new name
+            self._command_methods[newname] = target_func_name
+            # update the map so the oldname points to an empty string, signifying
+            # that it isn't a valid command
+            self._command_methods[oldname] = ''
+        else:
+            # the old command wasn't already in the map, use _cmd_func_name()
+            # to find the method name. _cmd_func_name() checks the map, but
+            # we've already assured ourselves that it isn't in the map
+            self._command_methods[newname] = self._cmd_func_name(oldname)
+
+        # update the _help_methods map
+        if oldname in self._help_methods:
+            # the old command is in the help map, save the old function name
+            target_func_name = self._help_methods[oldname]
+            # and add that function in the map under the new name
+            self._help_methods[newname] = target_func_name
+            # update the map so the oldname points to an empty string, showing
+            # that is isn't a valid command
+            self._help_methods[oldname] = ''
+        else:
+            # the old command wasn't already in the map, use _cmd_func_name()
+            # to find the method name. _cmd_func_name() checks the map, but
+            # we've already assured ourselves that it isn't in the map
+            self._help_methods[newname] = self._help_func_name(oldname)
 
 
     # noinspection PyMethodOverriding

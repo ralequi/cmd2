@@ -1966,8 +1966,11 @@ def test_get_all_commands_with_remap():
 
 def test_get_help_topics(base_app):
     # Verify that the base app has no additional help_foo methods
-    custom_help = base_app.get_help_topics()
-    assert len(custom_help) == 0
+    topics = base_app.get_help_topics()
+    assert len(topics) == 0
+
+def test_get_help_topics_custom():
+    pass
 
 def test_get_help_topics_hidden():
     # Verify get_help_topics() filters out hidden commands

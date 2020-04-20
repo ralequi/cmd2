@@ -5,8 +5,7 @@ Things to be done to implement the changes described in
 
 - [ ] fix get_help_topics() so it looks in self._help_methods
 - [ ] fix enabling and disabling commands and categories
-- [ ] make get_all_commands() look at the _command_methods dict
-- [ ] make get_help_topics() look at _help_methods dict
+- [x] make get_all_commands() look at the _command_methods dict
 - [x] add documentation showing how to make help that isn't associated
       with a command
 - [ ] write documentation on renaming commands
@@ -19,6 +18,13 @@ Things to be done to implement the changes described in
       error if they map it to a shortcut name?
 - [ ] write tests for cmd_func
 - [ ] write tests for get_help_func
+- [ ] consider renaming cmd_func() to get_command_func()
+
+
+## Changelog items
+
+- in some places within cmd2 get_help_topics() was assumed to have command names, in others it was assumed not to. Now it returns all help topics, misc and command.
+
 
 ## Design principles
 
