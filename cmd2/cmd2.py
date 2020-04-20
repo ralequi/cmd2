@@ -2153,15 +2153,14 @@ class Cmd(cmd.Cmd):
         You could use this method to make the built-in command run_pyscript
         available to a user as run-pyscript.
         """
-        self._command_methods = self._remap(self._command_methods, self.cmd_func, oldname, newname)
-        self._help_methods = self._remap(self._help_methods, self.get_help_func, oldname, newname)
+        self._command_methods = self._remap(self._command_methods, oldname, newname)
+        self._help_methods = self._remap(self._help_methods, oldname, newname)
 
-    def _remap(self, mapp: Dict, func: Callable, oldname: str, newname: str) -> Dict:
+    def _remap(self, mapp: Dict, oldname: str, newname: str) -> Dict:
         """
         """
-        method = func(oldname)
         # add the new command to the map
-        mapp[newname] = method
+        mapp[newname] = oldname
         # add the old command pointing to no method to the map
         # signifying that it isn't a valid command
         mapp[oldname] = None

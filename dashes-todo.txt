@@ -17,7 +17,8 @@ Things to be done to implement the changes described in
 - [ ] in __init__ we verify that command names don't start with shortcuts. Do
       we have to do the same verification when we rename a command and throw an
       error if they map it to a shortcut name?
-
+- [ ] write tests for cmd_func
+- [ ] write tests for get_help_func
 
 ## Design principles
 
