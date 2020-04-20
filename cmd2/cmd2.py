@@ -241,6 +241,11 @@ class Cmd(cmd.Cmd):
                                                 multiline_commands=multiline_commands,
                                                 shortcuts=shortcuts)
 
+        # create a map from user entered command names to the methods implementing those commands
+        self._command_methods = dict()
+        self._help_methods = dict()
+        self._completer_methods = dict()
+
         # Verify commands don't have invalid names (like starting with a shortcut)
         for cur_cmd in self.get_all_commands():
             valid, errmsg = self.statement_parser.is_valid_command(cur_cmd)
@@ -332,11 +337,6 @@ class Cmd(cmd.Cmd):
         # ensure the updates to the terminal don't interfere with the input being typed or output
         # being printed by a command.
         self.terminal_lock = threading.RLock()
-
-        # create a map from user entered command names to the methods implementing those commands
-        self._command_methods = dict()
-        self._help_methods = dict()
-        self._completer_methods = dict()
 
         # Commands that have been disabled from use. This is to support commands that are only available
         # during specific states of the application. This dictionary's keys are the command names and its
@@ -1473,8 +1473,34 @@ class Cmd(cmd.Cmd):
 
     def get_all_commands(self) -> List[str]:
         """Return a list of all commands"""
-        return [name[len(constants.COMMAND_FUNC_PREFIX):] for name in self.get_names()
-                if name.startswith(constants.COMMAND_FUNC_PREFIX) and callable(getattr(self, name))]
+        #
+        names = self.get_names()
+
+        # add explicitly named commands, and remove their associated methods
+        # so we don't pick them up later
+        all_commands = []
+        for command in self._command_methods:
+            all_commands.append(command)
+            try:
+                # this doesn't work on methods that have been wrapped with a
+                # decorator. i.e. if the original run_pyscript command has been
+                # decorated (it has), then what we see in self._command_methods[command]
+                # is just a bound method, not a name
+
+                names.remove(self._command_methods[command].__name__)
+            except ValueError:
+                pass
+
+        # from the names left, add the ones that look like command methods
+        for name in names:
+            if name.startswith(constants.COMMAND_FUNC_PREFIX):
+                if callable(getattr(self, name)):
+                    all_commands.append(name[len(constants.COMMAND_FUNC_PREFIX):])
+
+        return all_commands
+#
+#        return [name[len(constants.COMMAND_FUNC_PREFIX):] for name in self.get_names()
+#                if name.startswith(constants.COMMAND_FUNC_PREFIX) and callable(getattr(self, name))]
 
     def get_visible_commands(self) -> List[str]:
         """Return a list of commands that have not been hidden or disabled"""
@@ -1502,12 +1528,43 @@ class Cmd(cmd.Cmd):
 
     def get_help_topics(self) -> List[str]:
         """Return a list of help topics"""
-        all_topics = [name[len(constants.HELP_FUNC_PREFIX):] for name in self.get_names()
-                      if name.startswith(constants.HELP_FUNC_PREFIX) and callable(getattr(self, name))]
+        #
+        # This method is somewhat inefficient, it makes several passes
+        # through the names. While this could be done in a single loop,
+        # it would be many nested if's, and I think it's clearer what's
+        # happening with these multiple loops.
 
-        # Filter out hidden and disabled commands
-        return [topic for topic in all_topics
-                if topic not in self.hidden_commands and topic not in self.disabled_commands]
+        all_names = self.get_names()
+
+        # start by looking for commands in _help_methods, if it's there then
+        # someone explicity said the key to _help_methods was a help topic
+        help_topics = []
+        for topic in self._help_methods:
+            # add the topic to our list of help topics
+            help_topics.append(topic)
+            # and remove the associated method from the list of all_names.
+            # we don't want it to be a candidate to be added later
+            try:
+                all_names.remove(self._help_methods[topic])
+            except ValueError:
+                pass
+
+        # loop through the other method names, looking for and adding
+        # additional help topics
+        for name in self.get_names():
+            if name.startswith(constants.HELP_FUNC_PREFIX):
+                if callable(getattr(self, name)):
+                    help_topics.append(name[len(constants.HELP_FUNC_PREFIX):])
+
+        # finally, filter out hidden and disabled commands
+        active_topics = []
+        for topic in help_topics:
+            if topic not in self.hidden_commands:
+                if topic not in self.disabled_commands:
+                    active_topics.append(topic)
+
+        return active_topics
+
 
     # noinspection PyUnusedLocal
     def sigint_handler(self, signum: int, frame) -> None:

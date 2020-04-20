@@ -1954,6 +1954,16 @@ def test_get_all_commands(base_app):
                          'py', 'quit', 'run_pyscript', 'run_script', 'set', 'shell', 'shortcuts']
     assert commands == expected_commands
 
+def test_get_all_commands_with_remap():
+    class RemapApp(cmd2.Cmd):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.rename_command('run_pyscript', 'run-pyscript')
+
+    app = RemapApp()
+    assert 'run_pyscript' not in app.get_all_commands()
+    assert 'run-pyscript' in app.get_all_commands()
+
 def test_get_help_topics(base_app):
     # Verify that the base app has no additional help_foo methods
     custom_help = base_app.get_help_topics()

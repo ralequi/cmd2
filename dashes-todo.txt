@@ -9,6 +9,14 @@ Things to be done to implement the changes described in
 - [ ] make get_help_topics() look at _help_methods dict
 - [x] add documentation showing how to make help that isn't associated
       with a command
+- [ ] write documentation on renaming commands
+- [ ] create decorator that does the same as rename_command
+- [ ] create dashify-builtin-commands() method
+- [ ] unit tests for get_help_topics()
+- [ ] make get_all_commands() look at _command_methods
+- [ ] in __init__ we verify that command names don't start with shortcuts. Do
+      we have to do the same verification when we rename a command and throw an
+      error if they map it to a shortcut name?
 
 
 ## Design principles
