@@ -1947,6 +1947,40 @@ def test_onecmd_add_to_history(outsim_app):
     new_hist_len = len(outsim_app.history)
     assert new_hist_len == saved_hist_len
 
+#
+#########################################
+#
+
+def test_cmd_func_name(rename_app):
+    assert rename_app._cmd_func_name('cmd1') == 'do_cmd1'
+    assert rename_app._cmd_func_name('bogus') == ''
+    assert rename_app._cmd_func_name('underscore-cmd') == 'do_underscore_cmd'
+
+def test_cmd_func(rename_app):
+    assert rename_app.cmd_func('cmd1')
+    assert rename_app.cmd_func('bogus') is None
+    assert rename_app.cmd_func('underscore-cmd')
+
+def test_help_func_name(rename_app):
+    assert rename_app._help_func_name('cmd1') == 'help_cmd1'
+    assert rename_app._help_func_name('cmd2') == ''
+    assert rename_app._help_func_name('underscore-cmd') == 'help_underscore_cmd'
+
+def test_get_help_func(rename_app):
+    assert rename_app.get_help_func('cmd1')
+    assert rename_app.get_help_func('cmd2') is None
+    assert rename_app.get_help_func('underscore-cmd')
+
+def test_completer_func_name(rename_app):
+    assert rename_app._complete_func_name('cmd1') == 'complete_cmd1'
+    assert rename_app._complete_func_name('cmd2') == ''
+    assert rename_app._complete_func_name('underscore-cmd') == 'complete_underscore_cmd'
+
+def test_get_complete_func_name(rename_app):
+    assert rename_app.get_complete_func('cmd1')
+    assert rename_app.get_complete_func('cmd2') is None
+    assert rename_app.get_complete_func('underscore-cmd')
+
 def test_get_all_commands(base_app):
     # Verify that the base app has the expected commands
     commands = base_app.get_all_commands()
@@ -1989,6 +2023,11 @@ def test_get_help_topics_hidden():
 
     app.hidden_commands.append('my_cmd')
     assert 'my_cmd' not in app.get_help_topics()
+
+
+#
+######################################
+#
 
 class ReplWithExitCode(cmd2.Cmd):
     """ Example cmd2 application where we can specify an exit code when existing."""

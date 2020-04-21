@@ -3,7 +3,6 @@
 Things to be done to implement the changes described in
 [issue 907](https://github.com/python-cmd2/cmd2/issues/907)
 
-- [ ] fix get_help_topics() so it looks in self._help_methods
 - [ ] fix enabling and disabling commands and categories
 - [x] make get_all_commands() look at the _command_methods dict
 - [x] add documentation showing how to make help that isn't associated
@@ -11,14 +10,31 @@ Things to be done to implement the changes described in
 - [ ] write documentation on renaming commands
 - [ ] create decorator that does the same as rename_command
 - [ ] create dashify-builtin-commands() method
-- [ ] unit tests for get_help_topics()
-- [ ] make get_all_commands() look at _command_methods
+- [x] make get_all_commands() look at _command_methods
 - [ ] in __init__ we verify that command names don't start with shortcuts. Do
       we have to do the same verification when we rename a command and throw an
       error if they map it to a shortcut name?
-- [ ] write tests for cmd_func
-- [ ] write tests for get_help_func
-- [ ] consider renaming cmd_func() to get_command_func()
+- [x] write tests for cmd_func
+- [x] write tests for get_help_func
+- [ ] consider renaming cmd_func() to _get_command_func()
+- [ ] consider renaming _cmd_func_name() to _command_func_name()
+- [ ] make cmd_func() check if target is callable else return ''
+- [ ] consider whether get_help_func() and get_complete_func() should start with _
+- [x] complete implementation of rename_command
+
+## help related
+- [ ] fix get_help_topics()
+        - iterate through the valid commands and call a new method to
+          find the help for each one. _print_topics() should call this same method
+        - add additional items found by looking for help_mymischelptopic() functions
+- [ ] refactor _print_topics()
+- [ ] unit tests for get_help_topics(): test_get_help_topics(), test_get_help_topics_custom()
+- [ ] refactor _help_menu(). It should:
+        - get the list of commands
+        - get the list of help topics, ie check the map and look for help_topic() functions
+        - for each command check whether it has help (argparse or function), if so, remove it from the list of help topics
+        - if it doesn't, add it to undocumented commands
+        - you are left with a list of commands with help, a list of other help topics, and a list of undocumented commands
 
 
 ## Changelog items

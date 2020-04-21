@@ -150,6 +150,36 @@ def run_cmd(app, cmd):
 def base_app():
     return cmd2.Cmd()
 
+@fixture
+def rename_app():
+    class RenameApp(cmd2.Cmd):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.rename_command('underscore_cmd', 'underscore-cmd')
+
+        def do_cmd1(self, args):
+            pass
+
+        def help_cmd1(self):
+            pass
+
+        def complete_cmd1(self, text: str, line: str, begidx: int, endidx: int) -> List[str]:
+            pass
+
+        def do_cmd2(self, args):
+            pass
+
+        def do_underscore_cmd(self, args):
+            pass
+
+        def help_underscore_cmd(self):
+            pass
+
+        def complete_underscore_cmd(self, text: str, line: str, begidx: int, endidx: int) -> List[str]:
+            pass
+
+    return RenameApp()
+
 
 # These are odd file names for testing quoting of them
 odd_file_names = [

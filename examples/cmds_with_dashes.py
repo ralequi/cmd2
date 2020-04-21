@@ -4,6 +4,8 @@
 
 """
 import cmd2
+from cmd2 import utils
+from typing import List
 
 
 class CmdLineApp(cmd2.Cmd):
@@ -18,6 +20,10 @@ class CmdLineApp(cmd2.Cmd):
 
     def help_speed_up(self):
         self.poutput("help for going faster")
+
+    def complete_speed_up(self, text: str, line: str, begidx: int, endidx: int) -> List[str]:
+        strs_to_match = ['aa', 'ab', 'b', 'bc']
+        return utils.basic_complete(text, line, begidx, endidx, strs_to_match)
 
     def do_debug(self, args):
         """some dochelp on the debug command"""

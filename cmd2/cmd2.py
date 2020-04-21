@@ -244,7 +244,7 @@ class Cmd(cmd.Cmd):
         # create a map from user entered command names to the methods implementing those commands
         self._command_methods = dict()
         self._help_methods = dict()
-        self._completer_methods = dict()
+        self._complete_methods = dict()
 
         # Verify commands don't have invalid names (like starting with a shortcut)
         for cur_cmd in self.get_all_commands():
@@ -1264,7 +1264,7 @@ class Cmd(cmd.Cmd):
         # Check if a command was entered
         elif command in self.get_all_commands():
             # Get the completer function for this command
-            compfunc = getattr(self, constants.COMPLETER_FUNC_PREFIX + command, None)
+            compfunc = self.get_complete_func(command)
 
             if compfunc is None:
                 # There's no completer function, next see if the command uses argparse
@@ -1472,7 +1472,10 @@ class Cmd(cmd.Cmd):
         return dir(self)
 
     def get_all_commands(self) -> List[str]:
-        """Return a list of all commands"""
+        """Return a list of all commands
+
+        Hidden and disabled commands are present in this list
+        """
         #
         names = self.get_names()
 
@@ -1498,9 +1501,6 @@ class Cmd(cmd.Cmd):
                     all_commands.append(name[len(constants.COMMAND_FUNC_PREFIX):])
 
         return all_commands
-#
-#        return [name[len(constants.COMMAND_FUNC_PREFIX):] for name in self.get_names()
-#                if name.startswith(constants.COMMAND_FUNC_PREFIX) and callable(getattr(self, name))]
 
     def get_visible_commands(self) -> List[str]:
         """Return a list of commands that have not been hidden or disabled"""
@@ -1527,17 +1527,31 @@ class Cmd(cmd.Cmd):
         return list(visible_commands | alias_names | macro_names)
 
     def get_help_topics(self) -> List[str]:
-        """Return all available help topics
+        """Return help topics defined in the map or by a ``help_topic()`` function
 
         Commands can have help messages defined in several ways:
-        - by the argparser
-        - by a help_{command_name} function
-        - in the _help_methods() map
 
-        Help topics could be associated with a command, or they can be created
-        stand-alone by creating a help_topic() function.
+        1. argparser
+        2. by a help_{command_name} function
+        3. in the _help_methods() map
+
+        You can also create additional help topics not associated with a
+        command by creating a ``help_topic()`` function.
+
+        This method finds all four types of help, and returns them in a single
+        list. The list items are the name of the command, or the name of the topic for which there is help.
+
+        You might have a command which doesn't have any help defined for it. That
+        command won't show up here.
+
+        If a command is hidden or disabled, it won't show up in the help topics.
         """
-        return []
+        all_topics = [name[len(constants.HELP_FUNC_PREFIX):] for name in self.get_names()
+                      if name.startswith(constants.HELP_FUNC_PREFIX) and callable(getattr(self, name))]
+
+        # Filter out hidden and disabled commands
+        return [topic for topic in all_topics
+                if topic not in self.hidden_commands and topic not in self.disabled_commands]
 
 
     # noinspection PyUnusedLocal
@@ -2120,6 +2134,38 @@ class Cmd(cmd.Cmd):
         # make sure it's callable
         return target if callable(getattr(self, target, None)) else ''
 
+    def get_complete_func(self, command: str) -> Optional[Callable]:
+        """
+        Get the completer function for a command, if it exists
+
+        :param command: the name of the command
+
+        :Example:
+
+        >>> set_completer_func = self.get_completer_func('set')
+
+        set_completer_func now contains a reference to the ``completer_set`` method
+        """
+        func_name = self._complete_func_name(command)
+        if func_name:
+            return getattr(self, func_name)
+
+    def _complete_func_name(self, command: str) -> str:
+        """Get the method name of the completer method associated with the given command.
+
+        :param command: name of the command you want the completer function for
+        :return: method name of the completer function, or '' if there is no function defined
+
+        Completer methods could also be defined in the argparse instance wrapped
+        around a method. This
+        """
+        if command in self._complete_methods:
+            target = self._complete_methods[command]
+        else:
+            target = constants.COMPLETER_FUNC_PREFIX + command
+        return target if callable(getattr(self, target, None)) else ''
+
+
     def rename_command(self, oldname: str, newname: str):
         """Rename one of the built-in user commands.
 
@@ -2155,11 +2201,25 @@ class Cmd(cmd.Cmd):
             # that is isn't a valid command
             self._help_methods[oldname] = ''
         else:
-            # the old command wasn't already in the map, use _cmd_func_name()
-            # to find the method name. _cmd_func_name() checks the map, but
+            # the old command wasn't already in the map, use _help_func_name()
+            # to find the method name. _help_func_name() checks the map, but
             # we've already assured ourselves that it isn't in the map
             self._help_methods[newname] = self._help_func_name(oldname)
 
+        # update the _completer_methods map
+        if oldname in self._complete_methods:
+            # the old command is in the completer map, save the old function name
+            target_func_name = self._complete_methods[oldname]
+            # and add that function in the map under the new name
+            self._complete_methods[newname] = target_func_name
+            # update the map so the oldname points to an empty string, showing
+            # that is isn't a valid completer method
+            self._complete_methods[oldname] = ''
+        else:
+            # the old command wasn't already in the map, use _completer_func_name()
+            # to find the method name. _completer_func_name() checks the map, but
+            # we've already assured ourselves that it isn't in the map
+            self._complete_methods[newname] = self._complete_func_name(oldname)
 
     # noinspection PyMethodOverriding
     def onecmd(self, statement: Union[Statement, str], *, add_to_history: bool = True) -> bool:
@@ -4106,7 +4166,7 @@ class Cmd(cmd.Cmd):
             return
 
         help_func_name = self._help_func_name(command)
-        completer_func_name = constants.COMPLETER_FUNC_PREFIX + command
+        completer_func_name = self._complete_func_name(command)
 
         # Restore the command function to its original value
         dc = self.disabled_commands[command]
@@ -4159,7 +4219,7 @@ class Cmd(cmd.Cmd):
             raise AttributeError("{} does not refer to a command".format(command))
 
         help_func_name = self._help_func_name(command)
-        completer_func_name = constants.COMPLETER_FUNC_PREFIX + command
+        completer_func_name = self._complete_func_name(command)
 
         # Add the disabled command record
         self.disabled_commands[command] = DisabledCommand(command_function=command_function,
