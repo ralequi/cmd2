@@ -55,7 +55,6 @@ def pytest(context, junit=False, pty=True):
     with context.cd(TASK_ROOT_STR):
         command_str = 'pytest --cov=cmd2 --cov-report=term --cov-report=html'
         if junit:
-            # command_str += ' --junitxml={}/junit/test-results.xml'.format(TASK_ROOT_STR)
             command_str += ' --junitxml=junit/test-results.xml'
         command_str += ' tests'
         context.run(command_str, pty=pty)
