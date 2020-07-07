@@ -58,7 +58,7 @@ namespace.add_task(pytest)
 def pytest_junit(context):
     "Run tests and code coverage using pytest"
     with context.cd(TASK_ROOT_STR):
-        context.run("pytest --cov --junitxml=junit/test-results.xml", pty=True)
+        context.run("pytest --cov=cmd2_ext_test --junitxml=junit/test-results.xml")
 namespace.add_task(pytest_junit)
 
 @invoke.task
