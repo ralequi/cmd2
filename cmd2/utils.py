@@ -13,9 +13,12 @@ import sys
 import threading
 import unicodedata
 from enum import Enum
-from typing import Any, Callable, Dict, Iterable, List, Optional, TextIO, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, TextIO, TYPE_CHECKING, Union
 
 from . import constants
+
+if TYPE_CHECKING:  # pragma: no cover
+    import cmd2
 
 
 def is_quoted(arg: str) -> bool:
@@ -100,8 +103,13 @@ class CompletionError(Exception):
 
 
 class Settable:
-    """Used to configure a cmd2 instance member to be settable via the set command in the CLI"""
-    def __init__(self, name: str, val_type: Callable, description: str, *,
+    """Used to configure an attribute to be settable via the set command in the CLI"""
+    def __init__(self,
+                 name: str,
+                 val_type: Callable,
+                 description: str, *,
+                 destination: Union['cmd2.Cmd', 'cmd2.CommandSet'] = None,
+                 destination_name: Optional[str] = None,
                  onchange_cb: Callable[[str, Any, Any], Any] = None,
                  choices: Iterable = None,
                  choices_function: Optional[Callable] = None,
@@ -116,6 +124,8 @@ class Settable:
                          even validate its value. Setting this to bool provides tab completion for true/false and
                          validation using str_to_bool(). The val_type function should raise an exception if it fails.
                          This exception will be caught and printed by Cmd.do_set().
+        :param destination: destination object to configure with the set command
+        :param destination_name: destination attribute name. Defaults to `name` if not specified.
         :param description: string describing this setting
         :param onchange_cb: optional function or method to call when the value of this settable is altered
                             by the set command. (e.g. onchange_cb=self.debug_changed)
@@ -148,12 +158,37 @@ class Settable:
         self.name = name
         self.val_type = val_type
         self.description = description
+        self.destination = destination
+        self.destination_name = destination_name if destination_name is not None else name
         self.onchange_cb = onchange_cb
         self.choices = choices
         self.choices_function = choices_function
         self.choices_method = choices_method
         self.completer_function = completer_function
         self.completer_method = completer_method
+
+    def get_value(self) -> Any:
+        """
+        Get the value of the settable attribute
+        :return:
+        """
+        return getattr(self.destination, self.destination_name)
+
+    def set_value(self, value: Any) -> Any:
+        """
+        Set the settable attribute on the specified destination object
+        :param value: New value to set
+        :return: New value that the attribute was set to
+        """
+        # Try to update the settable's value
+        orig_value = self.get_value()
+        setattr(self.destination, self.destination_name, self.val_type(value))
+        new_value = getattr(self.destination, self.destination_name)
+
+        # Check if we need to call an onchange callback
+        if orig_value != new_value and self.onchange_cb:
+            self.onchange_cb(self.name, orig_value, new_value)
+        return new_value
 
 
 def namedtuple_with_defaults(typename: str, field_names: Union[str, List[str]],

@@ -762,6 +762,8 @@ class Cmd(cmd.Cmd):
 
         :param settable: Settable object being added
         """
+        if settable.destination is None:
+            settable.destination = self
         self.settables[settable.name] = settable
 
     def remove_settable(self, name: str) -> None:
@@ -3332,24 +3334,16 @@ class Cmd(cmd.Cmd):
                 return
 
             if args.value:
-                args.value = utils.strip_quotes(args.value)
-
                 # Try to update the settable's value
                 try:
-                    orig_value = getattr(self, args.param)
-                    setattr(self, args.param, settable.val_type(args.value))
-                    new_value = getattr(self, args.param)
+                    orig_value = settable.get_value()
+                    new_value = settable.set_value(utils.strip_quotes(args.value))
                 # noinspection PyBroadException
                 except Exception as e:
                     err_msg = "Error setting {}: {}".format(args.param, e)
                     self.perror(err_msg)
-                    return
-
-                self.poutput('{} - was: {!r}\nnow: {!r}'.format(args.param, orig_value, new_value))
-
-                # Check if we need to call an onchange callback
-                if orig_value != new_value and settable.onchange_cb:
-                    settable.onchange_cb(args.param, orig_value, new_value)
+                else:
+                    self.poutput('{} - was: {!r}\nnow: {!r}'.format(args.param, orig_value, new_value))
                 return
 
             # Show one settable
@@ -3362,7 +3356,8 @@ class Cmd(cmd.Cmd):
         max_len = 0
         results = dict()
         for param in to_show:
-            results[param] = '{}: {!r}'.format(param, getattr(self, param))
+            settable = self.settables[param]
+            results[param] = '{}: {!r}'.format(param, settable.get_value())
             max_len = max(max_len, ansi.style_aware_wcswidth(results[param]))
 
         # Display the results
