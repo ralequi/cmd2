@@ -108,8 +108,8 @@ class Settable:
                  name: str,
                  val_type: Callable,
                  description: str, *,
-                 destination: Union['cmd2.Cmd', 'cmd2.CommandSet'] = None,
-                 destination_name: Optional[str] = None,
+                 settable_object: Optional[object] = None,
+                 settable_attrib_name: Optional[str] = None,
                  onchange_cb: Callable[[str, Any, Any], Any] = None,
                  choices: Iterable = None,
                  choices_function: Optional[Callable] = None,
@@ -124,8 +124,8 @@ class Settable:
                          even validate its value. Setting this to bool provides tab completion for true/false and
                          validation using str_to_bool(). The val_type function should raise an exception if it fails.
                          This exception will be caught and printed by Cmd.do_set().
-        :param destination: destination object to configure with the set command
-        :param destination_name: destination attribute name. Defaults to `name` if not specified.
+        :param settable_object: Object to configure with the set command
+        :param settable_attrib_name: Attribute name to be modified. Defaults to `name` if not specified.
         :param description: string describing this setting
         :param onchange_cb: optional function or method to call when the value of this settable is altered
                             by the set command. (e.g. onchange_cb=self.debug_changed)
@@ -158,8 +158,8 @@ class Settable:
         self.name = name
         self.val_type = val_type
         self.description = description
-        self.destination = destination
-        self.destination_name = destination_name if destination_name is not None else name
+        self.settable_obj = settable_object
+        self.settable_attrib_name = settable_attrib_name if settable_attrib_name is not None else name
         self.onchange_cb = onchange_cb
         self.choices = choices
         self.choices_function = choices_function
@@ -172,7 +172,7 @@ class Settable:
         Get the value of the settable attribute
         :return:
         """
-        return getattr(self.destination, self.destination_name)
+        return getattr(self.settable_obj, self.settable_attrib_name)
 
     def set_value(self, value: Any) -> Any:
         """
@@ -182,8 +182,8 @@ class Settable:
         """
         # Try to update the settable's value
         orig_value = self.get_value()
-        setattr(self.destination, self.destination_name, self.val_type(value))
-        new_value = getattr(self.destination, self.destination_name)
+        setattr(self.settable_obj, self.settable_attrib_name, self.val_type(value))
+        new_value = getattr(self.settable_obj, self.settable_attrib_name)
 
         # Check if we need to call an onchange callback
         if orig_value != new_value and self.onchange_cb:
